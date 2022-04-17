@@ -1,10 +1,8 @@
-//import { FeeMarketEIP1559Transaction } from "@ethereumjs/tx";
-//console.log(FeeMarketEIP1559Transaction);
 import { default as CC } from "@ethereumjs/common";
 import { Chain, Hardfork } from '@ethereumjs/common'
 const Common = (<any>CC).default;
 
-import { rlp } from 'ethereumjs-util'
+import { rlp, toChecksumAddress } from 'ethereumjs-util'
 import TX from "@ethereumjs/tx";
 const { AccessListEIP2930Transaction, FeeMarketEIP1559Transaction, Transaction } = TX;
 import { Random } from "./random.js";
@@ -26,6 +24,12 @@ export interface TestCaseTransactionTx {
     chainId?: string;
 }
 
+export interface TestCaseTransactionSig {
+    r: string;
+    s: string;
+    v: string;
+}
+
 export interface TestCaseTransaction {
     name: string;
     transaction: TestCaseTransactionTx;
@@ -39,8 +43,20 @@ export interface TestCaseTransaction {
     signedBerlin: string;
     unsignedLondon: string;
     signedLondon: string;
+
+    signatureLegacy: TestCaseTransactionSig;
+    signatureEip155: TestCaseTransactionSig;
+    signatureBerlin: TestCaseTransactionSig;
+    signatureLondon: TestCaseTransactionSig;
 }
 
+function getSig(value: any): TestCaseTransactionSig {
+    return {
+        r: ("0x" + value.r.toString(16, 64)),
+        s: ("0x" + value.s.toString(16, 64)),
+        v: ("0x" + value.v.toString(16))
+    };
+}
 
 function genTransaction(name: string, privateKey: string, tx: TestCaseTransactionTx): TestCaseTransaction {
     const legacy = Object.assign({ }, tx, { type: 0, chainId: 0, maxPriorityFeePerGas: undefined, maxFeePerGas: undefined, accessList: undefined });
@@ -49,6 +65,7 @@ function genTransaction(name: string, privateKey: string, tx: TestCaseTransactio
     const unsignedLegacy = "0x" + rlp.encode(txLegacy.getMessageToSign(false)).toString("hex");
     txLegacy = txLegacy.sign(Buffer.from(privateKey.substring(2), "hex"));
     const signedLegacy = "0x" + txLegacy.serialize().toString("hex");
+    const signatureLegacy = getSig(Transaction.fromSerializedTx(txLegacy.serialize()));
 
     const eip155 = Object.assign({ }, tx, { type: 0 }, { maxPriorityFeePerGas: undefined, maxFeePerGas: undefined, accessList: undefined });
     const eip155Common = Common.custom({ chainId: parseInt(tx.chainId || "0"), hardfork: Hardfork.SpuriousDragon });
@@ -56,10 +73,12 @@ function genTransaction(name: string, privateKey: string, tx: TestCaseTransactio
     let unsignedEip155 = "0x" + rlp.encode(txEip155.getMessageToSign(false)).toString("hex");
     txEip155 = txEip155.sign(Buffer.from(privateKey.substring(2), "hex"));
     let signedEip155 = "0x" + txEip155.serialize().toString("hex");
+    let signatureEip155 = getSig(Transaction.fromSerializedTx(txEip155.serialize()));
 
     // EIP-155 doesn't support chainId of 0
     if (tx.chainId == null) {
         unsignedEip155 = signedEip155 = "";
+        signatureEip155 = { r: "", s: "", v: "" };
     }
 
     const berlin = Object.assign({ }, tx, { type: 1 }, { maxPriorityFeePerGas: undefined, maxFeePerGas: undefined });
@@ -68,6 +87,7 @@ function genTransaction(name: string, privateKey: string, tx: TestCaseTransactio
     const unsignedBerlin = "0x" + txBerlin.getMessageToSign(false).toString("hex");
     txBerlin = txBerlin.sign(Buffer.from(privateKey.substring(2), "hex"));
     const signedBerlin = "0x" + txBerlin.serialize().toString("hex");
+    const signatureBerlin = getSig(AccessListEIP2930Transaction.fromSerializedTx(txBerlin.serialize()));
 
     const london = Object.assign({ }, tx, { type: 2 }, { gasPrice: undefined });
     if (london.chainId == null) { london.chainId = "0x00"; }
@@ -75,11 +95,13 @@ function genTransaction(name: string, privateKey: string, tx: TestCaseTransactio
     const unsignedLondon = "0x" + txLondon.getMessageToSign(false).toString("hex");
     txLondon = txLondon.sign(Buffer.from(privateKey.substring(2), "hex"));
     const signedLondon = "0x" + txLondon.serialize().toString("hex");
+    const signatureLondon = getSig(FeeMarketEIP1559Transaction.fromSerializedTx(txLondon.serialize()));
 
     return {
         name, transaction: tx, privateKey,
         unsignedLegacy, unsignedEip155, unsignedBerlin, unsignedLondon,
-        signedLegacy, signedEip155, signedBerlin, signedLondon
+        signedLegacy, signedEip155, signedBerlin, signedLondon,
+        signatureLegacy, signatureEip155, signatureBerlin, signatureLondon
     }
 }
 
@@ -102,13 +124,13 @@ export async function gen_transactions(): Promise<Array<TestCaseTransaction>> {
             }
 
             for (let j = 0; j < addrCount; j++) {
-                const address = random.hexString(20);
+                const address = toChecksumAddress(random.hexString(20));
                 accessList.push({ address, storageKeys });
             }
         }
 
         const tx = {
-            to: random.hexString(20),
+            to: toChecksumAddress(random.hexString(20)),
             nonce: random.int(0, 1000),
             gasLimit: random.hexString(1, 5),
 
@@ -130,7 +152,7 @@ export async function gen_transactions(): Promise<Array<TestCaseTransaction>> {
         const random = new Random("defaults");
         const privateKey = random.hexString(32);
         const tx: any = {
-            to: random.hexString(20),
+            to: toChecksumAddress(random.hexString(20)),
             nonce: random.int(100, 1000),
             gasLimit: random.hexString(1, 5),
 
@@ -142,7 +164,7 @@ export async function gen_transactions(): Promise<Array<TestCaseTransaction>> {
             value: random.hexString(1, 5),
             accessList: [
                 {
-                    address: random.hexString(20),
+                    address: toChecksumAddress(random.hexString(20)),
                     storageKeys: [
                         random.hexString(32),
                         random.hexString(32),
