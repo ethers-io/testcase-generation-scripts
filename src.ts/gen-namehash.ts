@@ -15,6 +15,8 @@ import sha3 from "js-sha3";
 
 const hash = (function() {
 
+    const text = new TextEncoder();
+
     function namehash (inputName: string): string {
       // Reject empty names:
       let node = ''
@@ -28,7 +30,7 @@ const hash = (function() {
         let labels = name.split('.')
 
         for(let i = labels.length - 1; i >= 0; i--) {
-          let labelSha = sha3.keccak256(labels[i])
+          let labelSha = sha3.keccak256(text.encode(labels[i]))
           node = sha3.keccak256(new Buffer(node + labelSha, 'hex'))
         }
       }
