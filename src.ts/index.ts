@@ -6,7 +6,8 @@
 //import * as genMnemonics from "./gen-mnemonics.js";
 //import * as genWallets from "./gen-wallets.js";
 //import * as genTypedData from "./gen-eip712.js";
-import * as genHash from "./gen-hash.js";
+//import * as genHash from "./gen-hash.js";
+import * as genNamehash from "./gen-namehash.js";
 //import * as genTransactions from "./gen-transactions.js";
 
 import { saveTests } from "./utils.js";
@@ -36,7 +37,7 @@ async function run(genFuncs: Array<{ name: string, func: () => Promise<Array<any
 //        { name: "mnemonics", func: genMnemonics.gen_mnemonics },
 //        { name: "wallets", func: genWallets.gen_wallets },
 //        { name: "typed-data", func: genTypedData.gen_typedData },
-        { name: "namehash", func: genHash.gen_namehash },
+        { name: "namehash", func: genNamehash.gen_namehash },
 //        { name: "transactions", func: genTransactions.gen_transactions },
     ]);
 })().catch((error) => {
