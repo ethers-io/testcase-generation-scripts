@@ -1,6 +1,7 @@
 {
   "author": "Richard Moore <me@ricmoo.com>",
   "dependencies": {
+    "@adraffy/ens-normalize": "^1.9.0",
     "@ensdomains/eth-ens-namehash": "^2.0.15",
     "@ethereumjs/common": "^2.6.3",
     "@ethereumjs/tx": "^3.5.1",
